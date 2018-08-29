@@ -19,8 +19,10 @@ async function main(){
   console.log(text.length)
   
   let model = await loadModel()
-  model = buildInferenceModel(model)
-  const generated = generateText(model, "This is a seed message.")
+  let inferenceModel = buildInferenceModel(model)
+  console.log(inferenceModel.getWeights()[0].dataSync())
+  const seed = "This is a seed message. I hope that it is long enough. If not I don't know what to do."
+  const generated = generateText(inferenceModel, seed)
   console.log(generated)
 
   // NOTE: Don't forget to reset states on each epoch! This must be done manually!
@@ -36,13 +38,13 @@ function generateText(model, seed, length, topN) {
   let generated = seed
   let encoded = utils.encodeText(seed)
   model.resetStates()
-
+  console.log(encoded.length)
   encoded.slice(0, encoded.length - 1).forEach(idx => {
     const x = tf.tensor([[idx]])
     // input shape (1, 1)
     // set internal states
-    const pred = model.predict(x)
-    console.log(pred.dataSync())
+    const pred = model.predict(x, { verbose: true })
+    // console.log(pred.dataSync())
   })
 
   let nextIndex = encoded.length - 1
@@ -68,13 +70,14 @@ function buildInferenceModel(model, options) {
   model.trainable = false
   // COME BACK HERE
   const inferenceModel = tf.Sequential.fromConfig(tf.Sequential, config)
+  // this line matters, without it weights differ...
   inferenceModel.setWeights(model.getWeights())
   inferenceModel.trainable = false
   return inferenceModel
 }
 
 async function loadModel() {
-  const path = `/home/bbpwn2/Documents/Branger_Briz/bbchi-code/char-rnn-text-generation/checkpoints/base-model-10M/tfjs/model.json`
+  const path = '../char-rnn-text-generation/checkpoints/base-model-10M/tfjs/model.json'
   return await tf.loadModel(path)
 }
 
