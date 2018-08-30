@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "@tensorflow/tfjs": "^0.12.6",
+    "@tensorflow/tfjs-node-gpu": "^0.1.14",
     "electron": "^2.0.3"
   }
 }

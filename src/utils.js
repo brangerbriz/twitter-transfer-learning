@@ -94,32 +94,37 @@ function* batchGenerator(sequence, options) {
     // console.log(part.length)
     // console.log(part[part.length - 3], part[part.length - 2], part[part.length - 1])
 
-    let x = tf.tensor(sequence.slice(0, roundedLen))
-    if (options.oneHotFeatures) {
-        x = tf.oneHot(tf.cast(x, 'int32'), VOCABSIZE)
-        x = x.reshape([batchSize, numBatches * seqLen, VOCABSIZE])
-    } else {
-        x = x.reshape([batchSize, numBatches * seqLen])
-    }    
-    console.info(`x shape: ${x.shape}`)
+    const [x, y] = tf.tidy(() => {
+        let x = tf.tensor(sequence.slice(0, roundedLen))
+        if (options.oneHotFeatures) {
+            x = tf.oneHot(tf.cast(x, 'int32'), VOCABSIZE)
+            x = x.reshape([batchSize, numBatches * seqLen, VOCABSIZE])
+        } else {
+            x = x.reshape([batchSize, numBatches * seqLen])
+        }    
+        console.info(`x shape: ${x.shape}`)
 
-    let y = tf.tensor(sequence.slice(1, roundedLen + 1))
-    if (options.oneHotLabels) {
-        y = tf.oneHot(tf.cast(y, 'int32'), VOCABSIZE)
-        y = y.reshape([batchSize, numBatches * seqLen, VOCABSIZE])
-    } else {
-        y = y.reshape([batchSize, numBatches * seqLen])
-    }    
-    console.info(`y shape: ${x.shape}`)
-
+        let y = tf.tensor(sequence.slice(1, roundedLen + 1))
+        if (options.oneHotLabels) {
+            y = tf.oneHot(tf.cast(y, 'int32'), VOCABSIZE)
+            y = y.reshape([batchSize, numBatches * seqLen, VOCABSIZE])
+        } else {
+            y = y.reshape([batchSize, numBatches * seqLen])
+        }    
+        console.info(`y shape: ${x.shape}`)
+        return [x, y]
+    })
+    
     let epoch = 0
     const axis = 1
     const xEpoch = x.split(numBatches, axis)
     const yEpoch = y.split(numBatches, axis)
+    x.dispose()
+    y.dispose()
 
     while (true) {
         for (let i = 0; i < numBatches; i++) {
-            yield [xEpoch[i], yEpoch[i]]
+            yield [xEpoch[i], yEpoch[i], epoch]
         }
         console.info(`epoch ${epoch} finished`)
         epoch++
