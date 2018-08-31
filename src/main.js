@@ -1,10 +1,8 @@
 // tfjs must be at least v0.12.6 which is needed for stateful RNNs
 const tf = require('@tensorflow/tfjs')
 const utils = require('./src/utils')
-const util = require('util')
-const fs = require('fs')
 
-require('@tensorflow/tfjs-node-gpu')
+// require('@tensorflow/tfjs-node-gpu')
 // tf.setBackend('cpu')
 console.log(tf.getBackend())
 
@@ -15,7 +13,7 @@ const VAL_SPLIT=0.2
 
 async function main(){
 
-  const dataPath = '../char-rnn-text-generation/data/realdonaldtrump.txt'
+  const dataPath = 'http://localhost:1415/data/realdonaldtrump.txt'
   const [text, data] = await loadData(dataPath)
   const options = {
     batchSize: BATCH_SIZE,
@@ -142,7 +140,7 @@ function buildInferenceModel(model, options) {
 }
 
 async function loadData(path) {
-  const text = (await util.promisify(fs.readFile)(path)).toString()
+  const text = await fetch(path).then(res => res.text())
   const encoded = utils.encodeText(text)
   return [text, encoded]
 }
