@@ -9,12 +9,14 @@ require('@tensorflow/tfjs-node-gpu')
 console.log(tf.getBackend())
 
 const BATCH_SIZE = 128
-const FINETUNE_EPOCHS = 5
+const SEQ_LEN = 64
+const FINETUNE_EPOCHS = 15
 const VAL_SPLIT=0.2
 
 async function main(){
 
-  const [text, data] = await loadData()
+  const dataPath = '../char-rnn-text-generation/data/realdonaldtrump.txt'
+  const [text, data] = await loadData(dataPath)
   const options = {
     batchSize: BATCH_SIZE,
     oneHotLabels: true
@@ -23,18 +25,24 @@ async function main(){
   const valSplitIndex = Math.floor(data.length * VAL_SPLIT)
   const valGenerator = utils.batchGenerator(data.slice(0, valSplitIndex), options)
   const trainGenerator = utils.batchGenerator(data.slice(valSplitIndex), options)
-  const [ xBatch, yBatch ] = trainGenerator.next().value
   // for some reason, this length 130749 for brannondorsey.txt while the python version length is 130560...
   console.log(text.length)
   
-  let model = await loadModel()
+  const modelPath = '../char-rnn-text-generation/checkpoints/base-model-10M-rnn-size-128/tfjs/model.json'
+  // const modelPath = 'indexeddb://realdonaldtrump'
+  let model = await tf.loadModel(modelPath)
+  model = buildInferenceModel(model, {batchSize: BATCH_SIZE, seqLen: SEQ_LEN})
+  model.trainable = true
+  
+  // Fine tuning/transfer learning
   model.compile({ optimizer: 'adam', loss: 'categoricalCrossentropy', metrics: 'categoricalAccuracy'})
   const histories = await fineTuneModel(model, trainGenerator, valGenerator)
-  console.log(histories)
   
   let inferenceModel = buildInferenceModel(model)
-  const seed = "@brannondorsey"
-  const generated = generateText(inferenceModel, seed, 2048)
+  // const result = await inferenceModel.save('indexeddb://realdonaldtrump')
+  // console.log(result)
+  const seed = "Fake news media"
+  const generated = await generateText(inferenceModel, seed, 1024)
   console.log(generated)
 
   // NOTE: Don't forget to reset states on each epoch! This must be done manually!
@@ -49,16 +57,17 @@ async function fineTuneModel(model, trainGenerator, valGenerator) {
   // epochs
   while (true) {
     const [x, y, epoch] = trainGenerator.next().value
+    console.log(tf.memory())
     const history = await model.fit(x, y, { 
       batchSize: BATCH_SIZE, 
       epochs: 1,
       shuffle: false,
-      stepsPerEpoch: 1,
+      // stepsPerEpoch: 1,
       callbacks: {
         onBatchBegin,
         onBatchEnd
       } })
-    console.log(epoch)
+
     if (lastEpoch !== epoch) {
       const [x, y] = valGenerator.next().value
       console.log('evaluating model')
@@ -68,6 +77,8 @@ async function fineTuneModel(model, trainGenerator, valGenerator) {
       histories.push(history)
       model.resetStates()
       lastEpoch = epoch
+      x.dispose()
+      y.dispose()
     }
     if (epoch == FINETUNE_EPOCHS) {
       x.dispose()
@@ -84,7 +95,7 @@ async function fineTuneModel(model, trainGenerator, valGenerator) {
   }
 }
 
-function generateText(model, seed, length, topN) {
+async function generateText(model, seed, length, topN) {
   topN = topN || 10
   length = length || 512
   console.info(`generating ${length} characters from top ${topN} choices.`)
@@ -92,22 +103,25 @@ function generateText(model, seed, length, topN) {
   let generated = seed
   let encoded = utils.encodeText(seed)
   model.resetStates()
+
   encoded.slice(0, encoded.length - 1).forEach(idx => {
-    const x = tf.tensor([[idx]])
-    // input shape (1, 1)
-    // set internal states
-    model.predict(x, { verbose: true })
-    x.dispose()
+    tf.tidy(() => {
+      // input shape (1, 1)
+      const x = tf.tensor([[idx]])
+      // set internal states
+      model.predict(x, { verbose: true })
+    })
   })
 
   let nextIndex = encoded.length - 1
   for (let i = 0; i < length; i++) {
     const x = tf.tensor([[nextIndex]])
     // input shape (1, 1)
-    const probs = (model.predict(x)).dataSync()
-    x.dispose()
+    const probsTensor = model.predict(x)
     // output shape: (1, 1, VOCABSIZE)
-    const sample = SJS.Discrete(probs).draw()
+    x.dispose()
+    const probs = await probsTensor.data()
+    const sample = utils.sampleFromProbs(probs, 10)
     generated += utils.ID2CHAR.get(sample)
     nextIndex = sample
   }
@@ -120,7 +134,6 @@ function buildInferenceModel(model, options) {
   const seqLen = options.seqLen || 1
   const config = model.getConfig()
   config[0].config.batchInputShape = [batchSize, seqLen]
-  model.trainable = false
   const inferenceModel = tf.Sequential.fromConfig(tf.Sequential, config)
   // this line matters, without it weights differ...
   inferenceModel.setWeights(model.getWeights())
@@ -128,13 +141,7 @@ function buildInferenceModel(model, options) {
   return inferenceModel
 }
 
-async function loadModel() {
-  const path = '../char-rnn-text-generation/checkpoints/base-model-10M/tfjs/model.json'
-  return await tf.loadModel(path)
-}
-
-async function loadData() {
-  const path = '/home/bbpwn2/Documents/Branger_Briz/bbchi-code/char-rnn-text-generation/data/realdonaldtrump.txt'
+async function loadData(path) {
   const text = (await util.promisify(fs.readFile)(path)).toString()
   const encoded = utils.encodeText(text)
   return [text, encoded]

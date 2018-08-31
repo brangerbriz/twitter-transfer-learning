@@ -133,8 +133,27 @@ function* batchGenerator(sequence, options) {
 
 // truncated weight random choice
 function sampleFromProbs(probs, topN) {
+    
     topN = topN || 10
+    // probs is a Float32Array, so we will copy it manually
+    const copy = []
+    probs.forEach(prob => copy.push(prob))
 
+    // now that it is a regular array we can use the JSON hack to copy it again
+    const sorted = JSON.parse(JSON.stringify(copy))
+    sorted.sort((a, b) => b - a)
+
+    const truncated = sorted.slice(0, topN)
+    
+    // zero out all probability values that didn't make the topN
+    copy.forEach((prob, i) => {
+        if (!truncated.includes(prob)) copy[i] = 0
+    })
+
+    const sum = copy.reduce((a, b) => a + b, 0)
+    const rescaled = copy.map(prob => prob /= sum)
+
+    return SJS.Discrete(rescaled).draw()
 }
 
 module.exports = {
@@ -142,11 +161,14 @@ module.exports = {
     encodeText,
     decodeText,
     batchGenerator,
+    sampleFromProbs,
     ID2CHAR
 }
 
-const message = 'This is a test message. 😎🎉Those were some Emoji.'
-const encoded = encodeText(message)
-console.log('message: ', message)
-console.log('encoded: ', encoded.join(','))
-console.log('decoded: ', decodeText(encoded))
+// const test = [0.1, 0.75, 0.15]
+// console.log(sampleFromProbs(test, 2))
+// const message = 'This is a test message. 😎🎉Those were some Emoji.'
+// const encoded = encodeText(message)
+// console.log('message: ', message)
+// console.log('encoded: ', encoded.join(','))
+// console.log('decoded: ', decodeText(encoded))
