@@ -1,4 +1,4 @@
 node_modules/
-data/twitter_cikm_2010/
+data/text/twitter_cikm_2010/
 *.zip
-
+dist/

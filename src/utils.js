@@ -164,11 +164,3 @@ module.exports = {
     sampleFromProbs,
     ID2CHAR
 }
-
-// const test = [0.1, 0.75, 0.15]
-// console.log(sampleFromProbs(test, 2))
-// const message = 'This is a test message. 😎🎉Those were some Emoji.'
-// const encoded = encodeText(message)
-// console.log('message: ', message)
-// console.log('encoded: ', encoded.join(','))
-// console.log('decoded: ', decodeText(encoded))

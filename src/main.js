@@ -13,7 +13,7 @@ const VAL_SPLIT=0.2
 
 async function main(){
 
-  const dataPath = 'http://localhost:1415/data/realdonaldtrump.txt'
+  const dataPath = 'data/text/realdonaldtrump.txt'
   const [text, data] = await loadData(dataPath)
   const options = {
     batchSize: BATCH_SIZE,
@@ -25,13 +25,11 @@ async function main(){
   const trainGenerator = utils.batchGenerator(data.slice(valSplitIndex), options)
   // for some reason, this length 130749 for brannondorsey.txt while the python version length is 130560...
   console.log(text.length)
-  
-  const modelPath = '../char-rnn-text-generation/checkpoints/base-model-10M-rnn-size-128/tfjs/model.json'
-  // const modelPath = 'indexeddb://realdonaldtrump'
+
+  // const modelPath = 'indexeddb://realdonaldtrump'  
+  const modelPath = 'checkpoints/base-model-10M/tfjs/model.json'
   let model = await tf.loadModel(modelPath)
-  model = buildInferenceModel(model, {batchSize: BATCH_SIZE, seqLen: SEQ_LEN})
-  model.trainable = true
-  
+
   // Fine tuning/transfer learning
   model.compile({ optimizer: 'adam', loss: 'categoricalCrossentropy', metrics: 'categoricalAccuracy'})
   const histories = await fineTuneModel(model, trainGenerator, valGenerator)
@@ -42,10 +40,6 @@ async function main(){
   const seed = "Fake news media"
   const generated = await generateText(inferenceModel, seed, 1024)
   console.log(generated)
-
-  // NOTE: Don't forget to reset states on each epoch! This must be done manually!
-  // with model.resetStates()
-
 }
 
 async function fineTuneModel(model, trainGenerator, valGenerator) {
@@ -73,6 +67,7 @@ async function fineTuneModel(model, trainGenerator, valGenerator) {
       const valLoss = eval.dataSync()[0]
       console.log(`Epoch: ${epoch}, Training loss: ${history.history.loss[0]}, Validation loss: ${valLoss}`)
       histories.push(history)
+      // NOTE: Don't forget to reset states on each epoch! This must be done manually!
       model.resetStates()
       lastEpoch = epoch
       x.dispose()

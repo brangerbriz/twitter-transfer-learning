@@ -1,10 +1,12 @@
 {
-  "name": "char-rnn-online",
+  "name": "char-rnn-transfer-learning",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
     "start": "electron .",
+    "build": "rm -rf dist/ && browserify src/main.js -o dist/main.js && cp index.html dist/ && cp -r lib/ dist/",
+    "watch": "watch 'npm run build' src/",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -13,5 +15,9 @@
     "@tensorflow/tfjs": "^0.12.6",
     "@tensorflow/tfjs-node-gpu": "^0.1.14",
     "electron": "^2.0.3"
+  },
+  "devDependencies": {
+    "browserify": "^16.2.2",
+    "watch": "^1.0.2"
   }
 }
