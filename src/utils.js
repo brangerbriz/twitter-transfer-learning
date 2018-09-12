@@ -275,11 +275,11 @@ async function fineTuneModel(model, numEpochs, batchSize, trainGenerator, valGen
     }
   
     function onBatchBegin() {
-        // console.log('batch begin')
+        console.log('batch begin')
     }
     
     function onBatchEnd() {
-        // console.log('batch end')
+        console.log('batch end')
     }
 }
 module.exports = {

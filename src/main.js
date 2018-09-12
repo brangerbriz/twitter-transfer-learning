@@ -2,7 +2,7 @@
 const tf = require('@tensorflow/tfjs')
 const utils = require('./src/utils')
 
-require('@tensorflow/tfjs-node-gpu')
+require('@tensorflow/tfjs-node')
 // tf.setBackend('cpu')
 console.log(tf.getBackend())
 
@@ -38,7 +38,7 @@ async function main() {
     // console.log(text.length)
 
     // const modelPath = 'indexeddb://realdonaldtrump'  
-    const modelPath = '../char-rnn-text-generation/checkpoints/base-model/tfjs/model.json'
+    const modelPath = 'checkpoints/base-model/tfjs/model.json'
     let model = await tf.loadModel(modelPath)
     model = utils.updateModelArchitecture(model, { batchSize: BATCH_SIZE, seqLen: SEQ_LEN, dropout: DROPOUT })
     model.trainable = true
