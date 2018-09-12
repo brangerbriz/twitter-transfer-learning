@@ -156,7 +156,138 @@ function sampleFromProbs(probs, topN) {
     return SJS.Discrete(rescaled).draw()
 }
 
+async function generateText(model, seed, length, topN) {
+    topN = topN || 10
+    length = length || 512
+    console.info(`generating ${length} characters from top ${topN} choices.`)
+    console.info(`generating with seed: ${seed}`)
+    let generated = seed
+    let encoded = encodeText(seed)
+    model.resetStates()
+
+    encoded.slice(0, encoded.length - 1).forEach(idx => {
+        tf.tidy(() => {
+            // input shape (1, 1)
+            const x = tf.tensor([[idx]])
+            // set internal states
+            model.predict(x, { verbose: true })
+        })
+    })
+
+    let nextIndex = encoded.length - 1
+    for (let i = 0; i < length; i++) {
+        const x = tf.tensor([[nextIndex]])
+        // input shape (1, 1)
+        const probsTensor = model.predict(x)
+        // output shape: (1, 1, VOCABSIZE)
+         x.dispose()
+        const probs = await probsTensor.data()
+        const sample = sampleFromProbs(probs, topN)
+        generated += ID2CHAR.get(sample)
+        nextIndex = sample
+    }
+
+    return generated
+  }
+  
+function updateModelArchitecture(model, options) {
+    options = options || {}
+    const batchSize = options.batchSize || 1
+    const seqLen = options.seqLen || 1
+    const dropout = options.dropout
+    const config = model.getConfig()
+    config[0].config.batchInputShape = [batchSize, seqLen]
+  
+    config.forEach(layer => {
+        if (dropout && layer.className == 'Dropout') {
+            layer.config.rate = dropout
+            console.log(`set dropout rate to ${dropout}`)
+        }
+    })
+  
+    const updatedModel = tf.Sequential.fromConfig(tf.Sequential, config)
+    // this line matters, without it weights differ...
+    updatedModel.setWeights(model.getWeights())
+    return updatedModel
+}
+
+// load data from text file
+async function loadData(path) {
+    const text = await fetch(path).then(res => res.text())
+    const encoded = utils.encodeText(text)
+    return [text, encoded]
+}
+  
+// load data using a tweet-server
+async function loadTwitterData(user) {
+    const response = await fetch(`${TWEET_SERVER}/api/${user}`)
+    if (response.ok) {
+        const json = await response.json()
+        if (json.tweets) {
+            const text = json.tweets.join('\n')
+            const encoded = utils.encodeText(text)
+            return [text, encoded]
+        }
+    }
+  
+    throw TypeError(`Failed to load tweets for ${user}`)
+}
+
+async function fineTuneModel(model, numEpochs, batchSize, trainGenerator, valGenerator) {
+    const histories = []
+    model.resetStates()
+    let lastEpoch = 0
+    // epochs
+    while (true) {
+        const [x, y, epoch] = trainGenerator.next().value
+        // console.log(tf.memory())
+        const history = await model.fit(x, y, {
+            batchSize: batchSize,
+            epochs: 1,
+            shuffle: false,
+            stepsPerEpoch: 1,
+            callbacks: {
+                onBatchBegin,
+                onBatchEnd
+            }
+        })
+
+        if (lastEpoch !== epoch) {
+            const [x, y] = valGenerator.next().value
+            console.log('evaluating model')
+            const eval = await model.evaluate(x, y, { batchSize: batchSize })
+            const valLoss = eval.dataSync()[0]
+            console.log(`Epoch: ${epoch}, Training loss: ${history.history.loss[0]}, Validation loss: ${valLoss}`)
+            histories.push(history)
+            // NOTE: Don't forget to reset states on each epoch! This must be done manually!
+            model.resetStates()
+            lastEpoch = epoch
+            x.dispose()
+            y.dispose()
+        }
+    
+        if (epoch == numEpochs) {
+            x.dispose()
+            y.dispose()
+            return histories
+        }
+        await tf.nextFrame()
+    }
+  
+    function onBatchBegin() {
+        // console.log('batch begin')
+    }
+    
+    function onBatchEnd() {
+        // console.log('batch end')
+    }
+}
 module.exports = {
+    loadData,
+    loadTwitterData,
+    updateModelArchitecture,
+    fineTuneModel,
+    generateText,
     createDictionary,
     encodeText,
     decodeText,
