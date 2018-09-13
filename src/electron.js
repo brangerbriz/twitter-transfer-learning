@@ -2,7 +2,7 @@
 const tf = require('@tensorflow/tfjs')
 const utils = require('./src/utils')
 
-require('@tensorflow/tfjs-node')
+require('@tensorflow/tfjs-node-gpu')
 // tf.setBackend('cpu')
 console.log(tf.getBackend())
 
@@ -11,8 +11,10 @@ const TWEET_SERVER = 'http://localhost:3000'
 const BATCH_SIZE = 32 // 128
 const SEQ_LEN = 64
 const DROPOUT = 0.1
-const FINETUNE_EPOCHS = 1 // 10
+const FINETUNE_EPOCHS = 4 // 10
 const VAL_SPLIT = 0.2
+const GENERATED_TEXT_LENGTH = 1024
+const TOP_N_SAMPLING = 3
 
 // -----------------------------------------------------------------------------
 const app = new Vue({
@@ -54,8 +56,6 @@ const app = new Vue({
             })
             this.model.path = 'indexeddb://base-model'
         }
-
-
     },
     methods: {
         async downloadTweets() {
@@ -135,13 +135,15 @@ const app = new Vue({
                 inferenceModel.trainable = false
                 const seed = "I'm feeling great today how are you?"
                 this.model.status = `Generating text using ${this.model.path}`
-                const generated = await utils.generateText(inferenceModel, seed, 512, 3)
-                
+                const generated = await utils.generateText(inferenceModel, seed, GENERATED_TEXT_LENGTH, TOP_N_SAMPLING)
+                console.log(`generated ${generated.length} bytes of text`)
                 const tweets = generated.split('\n')
 
                 // remove the first and last tweets, as they usually are garbage
-                tweets.shift()
-                tweets.pop()
+                if (tweets.length > 2) {
+                    tweets.shift()
+                    tweets.pop()    
+                }
 
                 this.generatedTweets = tweets
             }

@@ -21,7 +21,7 @@
       <section class="model">
         <h3>Model</h3>
         Load Model 
-        <select v-model="model.path" v-on:change="loadModel(model.path)">
+        <select v-model="model.path" v-on:change="loadModel(model.path)" :disabled="model.training">
           <option v-for="m in models" :value="m.path">{{ m.name }}</option>
         </select>
         <button :disabled="data.data == null || model.model == null || model.training" @click=train>Train Model</button>
