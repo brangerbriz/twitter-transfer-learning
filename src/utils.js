@@ -195,7 +195,7 @@ function updateModelArchitecture(model, options) {
     const batchSize = options.batchSize || 1
     const seqLen = options.seqLen || 1
     const dropout = options.dropout
-    const config = model.getConfig()
+    const config = JSON.parse(JSON.stringify(model.getConfig()))
     config[0].config.batchInputShape = [batchSize, seqLen]
   
     config.forEach(layer => {
@@ -219,8 +219,14 @@ async function loadData(path) {
 }
   
 // load data using a tweet-server
-async function loadTwitterData(user) {
-    const response = await fetch(`${TWEET_SERVER}/api/${user}`)
+/**
+ * @function loadTwitterData
+ * @param  {string} user A twitter user to load tweets for
+ * @param  {string} tweetServer A url pointing to a running instance of https://github.com/brangerbriz/tweet-server
+ * @returns {Promise}
+ */
+async function loadTwitterData(user, tweetServer) {
+    const response = await fetch(`${tweetServer}/api/${user}`)
     if (response.ok) {
         const json = await response.json()
         if (json.tweets) {
@@ -249,7 +255,8 @@ async function fineTuneModel(model, numEpochs, batchSize, trainGenerator, valGen
             callbacks: {
                 onBatchBegin,
                 onBatchEnd
-            }
+            },
+            yieldEvery: 'batch'
         })
 
         if (lastEpoch !== epoch) {
@@ -271,7 +278,6 @@ async function fineTuneModel(model, numEpochs, batchSize, trainGenerator, valGen
             y.dispose()
             return histories
         }
-        await tf.nextFrame()
     }
   
     function onBatchBegin() {

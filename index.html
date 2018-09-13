@@ -3,9 +3,40 @@
   <head>
     <meta charset="utf-8">
     <title>Char-rnn Tweets</title>
+    <script src="lib/vue.js"></script>
   </head>
   <body>
+
+    <div id="app">
+      <h2>Twitter Bot Generator</h2>
+      
+      <section class="data">
+        <h3>Data</h3>
+        <input type="text" name="twitter-user" v-model="twitter.user">
+        <button @click=downloadTweets() >Download Tweets</button>
+        <p>{{ twitter.status }}</p>
+      </section>
+
+      <!-- <section class="model" v-if="data.data != null"> -->
+      <section class="model">
+        <h3>Model</h3>
+        Load Model 
+        <select v-model="model.path" v-on:change="loadModel(model.path)">
+          <option v-for="m in models" :value="m.path">{{ m.name }}</option>
+        </select>
+        <button :disabled="data.data == null || model.model == null || model.training" @click=train>Train Model</button>
+        <button :disabled="model.model == null || model.training" @click=generate>Generate Text</button>
+        <p>{{ model.status }}</p>
+      </section>
+
+      <section v-if="generatedTweets.length > 0" class="generated-text">
+        <h3>Generated Tweets</h3>
+        <p v-for="tweet in generatedTweets">{{ tweet }}</p>
+      </section>
+    </div>
+
     <script src="lib/discrete.js"></script>
-    <script src="src/main.js"></script>
+    <script src="src/electron.js"></script>
+
   </body>
 </html>
