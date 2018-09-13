@@ -13,7 +13,7 @@ const SEQ_LEN = 64
 const DROPOUT = 0.1
 const FINETUNE_EPOCHS = 4 // 10
 const VAL_SPLIT = 0.2
-const GENERATED_TEXT_LENGTH = 1024
+const GENERATED_TEXT_LENGTH = 2048
 const TOP_N_SAMPLING = 3
 
 // -----------------------------------------------------------------------------
@@ -131,7 +131,9 @@ const app = new Vue({
 
             if (this.model.model) {
                 this.model.status = 'Updating model architecture...'
+                console.log('start')
                 let inferenceModel = utils.updateModelArchitecture(this.model.model)
+                console.log('finish')
                 inferenceModel.trainable = false
                 const seed = "I'm feeling great today how are you?"
                 this.model.status = `Generating text using ${this.model.path}`

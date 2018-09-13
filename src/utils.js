@@ -185,6 +185,7 @@ async function generateText(model, seed, length, topN) {
         const sample = sampleFromProbs(probs, topN)
         generated += ID2CHAR.get(sample)
         nextIndex = sample
+        await tf.nextFrame()
     }
 
     return generated
@@ -195,7 +196,9 @@ function updateModelArchitecture(model, options) {
     const batchSize = options.batchSize || 1
     const seqLen = options.seqLen || 1
     const dropout = options.dropout
-    const config = JSON.parse(JSON.stringify(model.getConfig()))
+    // COME BACK! Is this necessary:
+    //    const config = JSON.parse(JSON.stringify(model.getConfig())) 
+    const config = model.getConfig()
     config[0].config.batchInputShape = [batchSize, seqLen]
   
     config.forEach(layer => {

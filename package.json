@@ -1,5 +1,5 @@
 {
-  "name": "char-rnn-transfer-learning",
+  "name": "twitter-transfer-learning",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -13,7 +13,6 @@
   "license": "ISC",
   "dependencies": {
     "@tensorflow/tfjs": "^0.12.7",
-    "@tensorflow/tfjs-node": "^0.1.15",
     "@tensorflow/tfjs-node-gpu": "^0.1.15",
     "electron": "^2.0.8"
   },

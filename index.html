@@ -2,36 +2,81 @@
 <html lang="en" dir="ltr">
   <head>
     <meta charset="utf-8">
-    <title>Char-rnn Tweets</title>
+    <title>Twitter Transfer Learning</title>
     <script src="lib/vue.js"></script>
+
+    <!-- required: this is all the base64 @font-faces (avoids FOUT) -->
+    <link rel="stylesheet" href="BBElements/css/bb-fonts.css">
+    <!-- required: this is the core styles file -->
+    <link rel="stylesheet" href="BBElements/css/bb-styles.css">
+    
+    <!-- optionally: if you want media-queries for responsive layout -->
+    <link rel="stylesheet" href="BBElements/css/bb-responsive.css">
+    <!-- optionally: if you want code snippets to be syntax highlighted -->
+    <link rel="stylesheet" href="BBElements/css/bb-code-colors.css">
+    <!-- optionally: if you want animations on load -->
+    <link rel="stylesheet" href="BBElements/css/bb-animations.css">
+
+    <!-- optionally: if you want code snippets to be syntax highlighted -->
+    <script src="BBElements/js/highlightJS/highlight.pack.js"></script>
+    <!-- required: handles misc logic (logo, marginal notes, captions, etc) -->
+    <script src="BBElements/js/BBElements.js"></script>
+    <style>
+      input, button, select {
+        font-family: 'BB_copy', sans-serif;
+        /* font-size: 16px; */
+        border: none;
+        color: #5f5f5f;
+        line-height: 24px;
+        letter-spacing: 1px;
+        margin: 0;
+      }
+
+      input, select {
+        background-color: rgb(235, 252, 255);
+      }
+    </style>
   </head>
   <body>
-
     <div id="app">
+      <!-- BB LOGO OPTIONAL HTML ATTRIBUTES
+          - width: changes the size of the logo.
+          - href: specifies where to link the logo to. When no href is specified the link defaults to our website, when set to href="false" it won't link anywhere.
+          - data-sub-title: adds a sub-title below the logo.
+          - data-brand-color: which changes the default pink color.
+          - data-text-color: which changes the default black text color.
+          - data-fill-color: which changes the white color of the B inside the circle mark.
+          - data-mark-only: if set to "true" it only renders the (B) mark, if set to "mobile" it only renders the (B) mark when innerWidth is less than 767px (assuming you are using bb-responsive-styles.css) positioned on the left, or to position the mobile (B) on the right you can also set it to "mobile-right"
+      -->
+      <!-- <section id="logo"></section> -->
       <h2>Twitter Bot Generator</h2>
       
+      <p>Create a bot that sounds like a twitter user. Download a user's twitter data, train an RNN model using transfer learning, and generate new tweets in their style, all from this electron app.</p>
       <section class="data">
         <h3>Data</h3>
+        <p>Use the input field below to download twitter data for a specific user. Populate the field with a twitter username, excluding the @ symbol, then press the "Download Tweets" button.</p>
+        <em><p style="color: black;">{{ twitter.status }}</p></em>
         <input type="text" name="twitter-user" v-model="twitter.user">
         <button @click=downloadTweets() >Download Tweets</button>
-        <p>{{ twitter.status }}</p>
       </section>
 
       <!-- <section class="model" v-if="data.data != null"> -->
       <section class="model">
         <h3>Model</h3>
-        Load Model 
+        <p>Once you've downloaded twitter data you can train a new model using the "base-model." You can also load models you have already trained and continue to train them or use them to generate new tweets.</p>
+        <em><p style="color: black;">{{ model.status }}</p></em>
+        <label>Load Model</label> 
         <select v-model="model.path" v-on:change="loadModel(model.path)" :disabled="model.training">
           <option v-for="m in models" :value="m.path">{{ m.name }}</option>
         </select>
         <button :disabled="data.data == null || model.model == null || model.training" @click=train>Train Model</button>
-        <button :disabled="model.model == null || model.training" @click=generate>Generate Text</button>
-        <p>{{ model.status }}</p>
+        <button :disabled="model.model == null || model.training" @click=generate>Generate Tweets</button>
       </section>
 
       <section v-if="generatedTweets.length > 0" class="generated-text">
         <h3>Generated Tweets</h3>
-        <p v-for="tweet in generatedTweets">{{ tweet }}</p>
+        <p>Here are a few synthetic tweets generated in the style of @{{ model.name }}. Generating new tweets will replace these ones.</p>
+        <p style="color:black;" v-for="tweet in generatedTweets">{{ tweet }}</p>
       </section>
     </div>
 
