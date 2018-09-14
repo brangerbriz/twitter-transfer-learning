@@ -106,7 +106,7 @@ const app = new Vue({
                 const valGenerator = utils.batchGenerator(this.data.data.slice(0, valSplitIndex), options)
                 const trainGenerator = utils.batchGenerator(this.data.data.slice(valSplitIndex), options)
 
-                const histories = await utils.fineTuneModel(this.model.model, FINETUNE_EPOCHS, BATCH_SIZE, trainGenerator, valGenerator)
+                const losses = await utils.fineTuneModel(this.model.model, FINETUNE_EPOCHS, BATCH_SIZE, trainGenerator, valGenerator)
 
                 if (this.model.name !== this.twitter.user) {
                     console.log('this is the base model')

@@ -1,5 +1,7 @@
 const tf = require('@tensorflow/tfjs')
-
+if (typeof fetch === 'undefined') {
+    fetch = require('node-fetch')
+}
 /**
  * Create char2id, id2char and vocab_size
  * from printable ascii characters.
@@ -78,9 +80,6 @@ function decodeText(numbers, id2char) {
 function* batchGenerator(sequence, options) {
     const batchSize = options.batchSize || 64
     const seqLen = options.seqLen || 64
-    const oneHotFeatures = options.oneHotFeatures || false
-    const oneHotLabels = options.oneHotLabels || false
-    const valSplit = options.valSplit || 0.0
 
     const numBatches = Math.floor((sequence.length - 1) / (batchSize * seqLen))
 
@@ -197,14 +196,13 @@ function updateModelArchitecture(model, options) {
     const seqLen = options.seqLen || 1
     const dropout = options.dropout
     // COME BACK! Is this necessary:
-    //    const config = JSON.parse(JSON.stringify(model.getConfig())) 
+    // const config = JSON.parse(JSON.stringify(model.getConfig())) 
     const config = model.getConfig()
-    config[0].config.batchInputShape = [batchSize, seqLen]
+    config[0].config.batchInputShape = [ batchSize, seqLen ]
   
     config.forEach(layer => {
         if (dropout && layer.className == 'Dropout') {
             layer.config.rate = dropout
-            console.log(`set dropout rate to ${dropout}`)
         }
     })
   
@@ -229,12 +227,13 @@ async function loadData(path) {
  * @returns {Promise}
  */
 async function loadTwitterData(user, tweetServer) {
+    console.log(`${tweetServer}/api/${user}`)
     const response = await fetch(`${tweetServer}/api/${user}`)
     if (response.ok) {
         const json = await response.json()
         if (json.tweets) {
             const text = json.tweets.join('\n')
-            const encoded = utils.encodeText(text)
+            const encoded = encodeText(text)
             return [text, encoded]
         }
     }
@@ -242,10 +241,16 @@ async function loadTwitterData(user, tweetServer) {
     throw TypeError(`Failed to load tweets for ${user}`)
 }
 
-async function fineTuneModel(model, numEpochs, batchSize, trainGenerator, valGenerator) {
-    const histories = []
+async function fineTuneModel(model, numEpochs, batchSize, trainGenerator, valGenerator, callbacks) {
+    const losses = {
+        loss: [],
+        valLoss: []
+    }
     model.resetStates()
     let lastEpoch = 0
+    if (callbacks && typeof callbacks.onEpochBegin === 'function') {
+        callbacks.onEpochBegin()
+    }
     // epochs
     while (true) {
         const [x, y, epoch] = trainGenerator.next().value
@@ -254,21 +259,22 @@ async function fineTuneModel(model, numEpochs, batchSize, trainGenerator, valGen
             batchSize: batchSize,
             epochs: 1,
             shuffle: false,
-            stepsPerEpoch: 1,
-            callbacks: {
-                onBatchBegin,
-                onBatchEnd
-            },
+            // stepsPerEpoch: 1,
+            // callbacks: callbacks,
             yieldEvery: 'batch'
         })
 
         if (lastEpoch !== epoch) {
+            if (callbacks && typeof callbacks.onEpochEnd === 'function') {
+                callbacks.onEpochEnd()
+            }
             const [x, y] = valGenerator.next().value
             console.log('evaluating model')
             const eval = await model.evaluate(x, y, { batchSize: batchSize })
-            const valLoss = eval.dataSync()[0]
+            const valLoss = (await eval.data())[0]
             console.log(`Epoch: ${epoch}, Training loss: ${history.history.loss[0]}, Validation loss: ${valLoss}`)
-            histories.push(history)
+            losses.loss.push(history.history.loss[0])
+            losses.valLoss.push(valLoss)
             // NOTE: Don't forget to reset states on each epoch! This must be done manually!
             model.resetStates()
             lastEpoch = epoch
@@ -279,16 +285,12 @@ async function fineTuneModel(model, numEpochs, batchSize, trainGenerator, valGen
         if (epoch == numEpochs) {
             x.dispose()
             y.dispose()
-            return histories
+            return losses
+        } else if (lastEpoch !== epoch) {
+            if (callbacks && typeof callbacks.onEpochBegin === 'function') {
+                callbacks.onEpochBegin()
+            }
         }
-    }
-  
-    function onBatchBegin() {
-        console.log('batch begin')
-    }
-    
-    function onBatchEnd() {
-        console.log('batch end')
     }
 }
 module.exports = {

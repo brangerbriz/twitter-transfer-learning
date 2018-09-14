@@ -1,4 +1,5 @@
 node_modules/
+checkpoints/
 data/text/twitter_cikm_2010/
 *.zip
 dist/

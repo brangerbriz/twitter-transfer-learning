@@ -45,7 +45,7 @@ async function main() {
 
     // Fine tuning/transfer learning
     model.compile({ optimizer: 'rmsprop', loss: 'categoricalCrossentropy', metrics: 'categoricalAccuracy' })
-    const histories = await utils.fineTuneModel(model, FINETUNE_EPOCHS, BATCH_SIZE, trainGenerator, valGenerator)
+    const losses = await utils.fineTuneModel(model, FINETUNE_EPOCHS, BATCH_SIZE, trainGenerator, valGenerator)
     const result = await model.save('indexeddb://gray_gold')
 
     let inferenceModel = utils.updateModelArchitecture(model)
