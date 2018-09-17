@@ -2,13 +2,13 @@
 const tf = require('@tensorflow/tfjs')
 const utils = require('./src/utils')
 
-require('@tensorflow/tfjs-node-gpu')
+require('@tensorflow/tfjs-node')
 // tf.setBackend('cpu')
 console.log(tf.getBackend())
 
 const TWEET_SERVER = 'http://localhost:3000'
 
-const BATCH_SIZE = 32 // 128
+const BATCH_SIZE = 128
 const SEQ_LEN = 64
 const DROPOUT = 0.1
 const FINETUNE_EPOCHS = 4 // 10
