@@ -124,21 +124,25 @@ const app = new Vue({
                 const valGenerator = utils.batchGenerator(this.data.data.slice(0, valSplitIndex), options)
                 const trainGenerator = utils.batchGenerator(this.data.data.slice(valSplitIndex), options)
 
-                let losses
                 try {
-                    losses = await utils.fineTuneModel(this.model.model, 
+                    const callbacks = { 
+                        onEpochEnd: (epoch, loss, valLoss) => {
+                            this.model.status += `<br>Training epoch #${epoch} loss: ${loss.toFixed(2)}, val loss: ${valLoss.toFixed(2)}`
+                        } 
+                    }
+                    
+                    await utils.fineTuneModel(this.model.model, 
                                                        FINETUNE_EPOCHS,
                                                        BATCH_SIZE, 
                                                        trainGenerator, 
-                                                       valGenerator)
+                                                       valGenerator,
+                                                       callbacks)
                 } catch (err) {
                     console.error(err)
                     this.model.status = 'Error training model'
                     if (err.message) this.model.status += `: ${err.message}`
                     return
                 }
-
-                console.log(losses)
 
                 if (this.model.name === 'base-model') {
                     const newModel = {
@@ -150,9 +154,9 @@ const app = new Vue({
                     this.model.name = newModel.name
                 }
 
-                this.model.status = `Saving trained model to ${this.model.path}`
+                this.model.status += `<br>Saving trained model to ${this.model.path}`
                 await this.model.model.save(this.model.path)
-                this.model.status = `Saved ${this.model.path}`
+                this.model.status += `<br>Model saved. Done.`
 
                 this.model.training = false
             }

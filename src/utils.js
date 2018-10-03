@@ -265,21 +265,23 @@ async function fineTuneModel(model, numEpochs, batchSize, trainGenerator, valGen
         })
 
         if (lastEpoch !== epoch) {
-            if (callbacks && typeof callbacks.onEpochEnd === 'function') {
-                callbacks.onEpochEnd()
-            }
             const [x, y] = valGenerator.next().value
             console.log('evaluating model')
             const eval = await model.evaluate(x, y, { batchSize: batchSize })
             const valLoss = (await eval.data())[0]
-            console.log(`Epoch: ${epoch}, Training loss: ${history.history.loss[0]}, Validation loss: ${valLoss}`)
-            losses.loss.push(history.history.loss[0])
+            const loss = history.history.loss[0]
+            console.log(`Epoch: ${epoch}, Training loss: ${loss}, Validation loss: ${valLoss}`)
+            losses.loss.push(loss)
             losses.valLoss.push(valLoss)
             // NOTE: Don't forget to reset states on each epoch! This must be done manually!
             model.resetStates()
             lastEpoch = epoch
             x.dispose()
             y.dispose()
+
+            if (callbacks && typeof callbacks.onEpochEnd === 'function') {
+                callbacks.onEpochEnd(lastEpoch, loss, valLoss)
+            }
         }
     
         if (epoch == numEpochs) {
