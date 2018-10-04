@@ -1,5 +1,6 @@
 // tfjs must be at least v0.12.6 which is needed for stateful RNNs
 const tf = require('@tensorflow/tfjs')
+const fs = require('fs')
 const path = require('path')
 const utils = require('./utils')
 
@@ -38,8 +39,11 @@ async function main() {
     // Fine tuning/transfer learning
     model.compile({ optimizer: 'rmsprop', loss: 'categoricalCrossentropy' })
     await utils.fineTuneModel(model, FINETUNE_EPOCHS, BATCH_SIZE, trainGenerator, valGenerator)
+    
     // save the model for re-use
-    await model.save(`file://${path.resolve(__dirname, '..', 'checkpoints', TWITTER_USER, 'model.json')}`)
+    const saveDir = path.resolve(__dirname, '..', 'checkpoints', TWITTER_USER)
+    fs.mkdirSync(saveDir)
+    await model.save(`file://${ path.join(saveDir, 'model.json') }`)
 
     let inferenceModel = utils.updateModelArchitecture(model)
     model.trainable = false
