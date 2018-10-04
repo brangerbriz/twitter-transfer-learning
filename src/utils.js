@@ -130,6 +130,20 @@ function* batchGenerator(sequence, options) {
     }
 }
 
+// draw a discrete sample index from an array of probabilities (probability distribution)
+// probs will be rescaled to sum to 1.0 if the values do not already
+function sample(probs) {
+    const sum = probs.reduce((a, b) => a + b, 0)
+    if (sum <= 0) throw Error('probs must sum to a value greater than zero')
+    const normalized = probs.map(prob => prob / sum)
+    const sample = Math.random()
+    let total = 0
+    for (let i = 0; i < normalized.length; i++) {
+        total += normalized[i]
+        if (sample < total) return i
+    }
+}
+
 // truncated weight random choice
 function sampleFromProbs(probs, topN) {
     
@@ -149,10 +163,7 @@ function sampleFromProbs(probs, topN) {
         if (!truncated.includes(prob)) copy[i] = 0
     })
 
-    const sum = copy.reduce((a, b) => a + b, 0)
-    const rescaled = copy.map(prob => prob /= sum)
-
-    return SJS.Discrete(rescaled).draw()
+    return sample(copy)
 }
 
 async function generateText(model, seed, length, topN) {
