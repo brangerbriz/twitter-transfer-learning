@@ -144,7 +144,7 @@ const app = new Vue({
                     return
                 }
 
-                if (this.model.name === 'base-model') {
+                if (this.model.name !== this.twitter.user) {
                     const newModel = {
                         name: this.twitter.user,
                         path: `indexeddb://${this.twitter.user}`,
