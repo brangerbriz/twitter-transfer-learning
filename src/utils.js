@@ -293,16 +293,16 @@ async function fineTuneModel(model, numEpochs, batchSize, trainGenerator, valGen
             if (callbacks && typeof callbacks.onEpochEnd === 'function') {
                 callbacks.onEpochEnd(lastEpoch, loss, valLoss)
             }
+
+            if (epoch != numEpochs && callbacks && typeof callbacks.onEpochBegin === 'function') {
+                callbacks.onEpochBegin()
+            }
         }
     
         if (epoch == numEpochs) {
             x.dispose()
             y.dispose()
             return losses
-        } else if (lastEpoch !== epoch) {
-            if (callbacks && typeof callbacks.onEpochBegin === 'function') {
-                callbacks.onEpochBegin()
-            }
         }
     }
 }
