@@ -1,28 +1,35 @@
+#!/usr/bin/env node
+
 // tfjs must be at least v0.12.6 which is needed for stateful RNNs
 const tf = require('@tensorflow/tfjs')
 const hpjs = require('hyperparameters')
 const path = require('path')
-const util = require('util')
 const fs = require('fs')
 const Json2csvParser = require('json2csv').Parser
-const utils = require('./utils')
+const utils = require('../src/utils')
 
+// try and load tfjs-node-gpu, but fallback to tfjs-node if no CUDA
 require('@tensorflow/tfjs-node-gpu')
-// tf.setBackend('cpu')
-console.log(tf.getBackend())
+if (['webgl', 'cpu'].includes(tf.getBackend())) {
+    require('@tensorflow/tfjs-node') 
+    console.log('GPU environment not found, loaded @tensorflow/tfjs-node')
+} else {
+    console.log('loaded @tensorflow/tfjs-node-gpu')
+}
+console.log(`using tfjs backend "${tf.getBackend()}"`)
 
-const NUM_TRIALS = 50
-const NUM_EPOCHS = 1
-const EXPERIMENT_PATH = 'checkpoints/hyperparameter-search'
+const NUM_TRIALS = 60
+const NUM_EPOCHS = 5
+const EXPERIMENT_PATH = path.join('checkpoints', 'hyperparameter-search-60-trials-5-epochs-3')
 
-
+const TWITTER_USER = 'brannondorsey'
 const TWEET_SERVER = 'http://localhost:3000'
 const VAL_SPLIT = 0.2
 
 const SEARCH_SPACE = {
-  batchSize: hpjs.choice([16, 32, 64, 128]),
-  seqLen: hpjs.choice([16, 32, 64]),
-  dropout: 0.1, // hpjs.uniform(0.0, 0.4),
+  batchSize: hpjs.choice([16, 32, 64]),
+  seqLen: hpjs.choice([16, 32, 64, 128]),
+  dropout: hpjs.choice([0.0, 0.1, 0.25]),
   optimizer: hpjs.choice(['rmsprop', 'adagrad', 'adadelta', 'adam'])
 }
 
@@ -36,7 +43,12 @@ async function trial(data) {
     const valGenerator = utils.batchGenerator(data.slice(0, valSplitIndex), { ...params, oneHotLabels: true })
     const trainGenerator = utils.batchGenerator(data.slice(valSplitIndex), { ...params, oneHotLabels: true })
 
-    const modelPath = 'file://' + path.resolve(__dirname, '..', 'checkpoints/base-model/tfjs/model.json')
+    const modelPath = 'file://' + path.resolve(__dirname, 
+                                              '..', 
+                                              'checkpoints', 
+                                              'base-model', 
+                                              'tfjs', 
+                                              'model.json')
     let model = await tf.loadModel(modelPath)
     model = utils.updateModelArchitecture(model, params)
     model.trainable = true
@@ -73,12 +85,22 @@ async function trial(data) {
 
     console.log('running trial with hyperparameters:')
     console.log(params)
-    const losses = await utils.fineTuneModel(model, 
-                                             NUM_EPOCHS, 
-                                             params.batchSize, 
-                                             trainGenerator, 
-                                             valGenerator,
-                                             callbacks)
+
+    let losses
+    
+    try {
+        losses = await utils.fineTuneModel(model, 
+                                           NUM_EPOCHS, 
+                                           params.batchSize, 
+                                           trainGenerator, 
+                                           valGenerator,
+                                           callbacks)
+    } catch (err) {
+        console.error('error during model training:')
+        console.error(err)
+        return null
+    }
+    
     
     const trialDir = path.join(EXPERIMENT_PATH, trialNum.toString())
     if (!fs.existsSync(trialDir)) {
@@ -99,9 +121,15 @@ async function trial(data) {
 
 async function main() {
 
-    const twitterUser = 'realdonaldtrump'
-    console.log(`fetching tweets for user @${twitterUser}...`)
-    const [text, data] = await utils.loadTwitterData(twitterUser, TWEET_SERVER)
+    console.log(`fetching tweets for user @${TWITTER_USER}...`)
+    let text, data
+    try {
+        [text, data] = await utils.loadTwitterData(TWITTER_USER, TWEET_SERVER)
+    } catch (err) {
+        console.error(`Error downloading tweets: ${err.message}`)
+        console.error(`Is a tweet-server (https://github.com/brangerbriz/tweet-server) instance running at ${TWEET_SERVER}?`)
+        process.exit(1)
+    }
     console.log('download complete.')
 
     if (!fs.existsSync(EXPERIMENT_PATH)) {
@@ -115,26 +143,27 @@ async function main() {
     //        dropout: 0.1,
     //        optimizer: 'adadelta' },
     //     losses: 
-//    { loss: [ 1.8399657011032104, 1.7735635042190552, 1.7588552236557007 ],
-//     valLoss: [ 1.7922641038894653, 1.6736118793487549, 1.7574846744537354 ] },
-
-//     //     trialNum: 1 }
+    //    { loss: [ 1.8399657011032104, 1.7735635042190552, 1.7588552236557007 ],
+    //     valLoss: [ 1.7922641038894653, 1.6736118793487549, 1.7574846744537354 ] },
+    //     trialNum: 1 }
       
 
     const trials = []
     for (let i = 1; i <= NUM_TRIALS; i++) {
         const result = await trial(data)
-        // console.log(util.inspect(result, { depth: null }))
-
-        trials.push(result)
-        fs.writeFileSync(path.resolve(EXPERIMENT_PATH, 'trials.json'), JSON.stringify(trials))
-        writeTrialsCSV(path.resolve(EXPERIMENT_PATH, 'trials.csv'), trials)
+        if (result) {
+            trials.push(result)
+            fs.writeFileSync(path.resolve(EXPERIMENT_PATH, 'trials.json'), JSON.stringify(trials))
+            writeTrialsCSV(path.resolve(EXPERIMENT_PATH, 'trials.csv'), trials)
+        }
     }
 }
 
 function writeTrialsCSV(path, trials) {
    
    const copy = JSON.parse(JSON.stringify(trials))
+
+   // TODO: For whatever reason, this sorting sometimes fails... wtf.
    copy.sort((a, b) => {
        return Math.min(...a.losses.valLoss) > Math.min(...b.losses.valLoss)
    })
@@ -165,7 +194,7 @@ function writeTrialsCSV(path, trials) {
            "avg_epoch_seconds": parseInt(trial.avgEpochSeconds), 
            "batch_size": trial.params.batchSize, 
            "seq_len": trial.params.seqLen, 
-           "drop_rate": trial.params.dropRate, 
+           "drop_rate": trial.params.dropout, 
            "optimizer": trial.params.optimizer
         }
    })
