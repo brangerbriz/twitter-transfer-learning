@@ -229,16 +229,16 @@ async function loadData(path) {
     const encoded = utils.encodeText(text)
     return [text, encoded]
 }
-  
-// load data using a tweet-server
+
 /**
+ * Load data using a tweet-server (https://github.com/brangerbriz/tweet-server)
  * @function loadTwitterData
  * @param  {string} user A twitter user to load tweets for
- * @param  {string} tweetServer A url pointing to a running instance of https://github.com/brangerbriz/tweet-server
+ * @param  {string} tweetServer A url pointing to a tweet-server instance
  * @returns {Promise}
+ * @throws TypeError
  */
 async function loadTwitterData(user, tweetServer) {
-    console.log(`${tweetServer}/api/${user}`)
     const response = await fetch(`${tweetServer}/api/${user}`)
     if (response.ok) {
         const json = await response.json()
@@ -248,30 +248,38 @@ async function loadTwitterData(user, tweetServer) {
             return [text, encoded]
         }
     }
-  
     throw TypeError(`Failed to load tweets for ${user}`)
 }
 
-async function fineTuneModel(model, numEpochs, batchSize, trainGenerator, valGenerator, callbacks) {
+async function fineTuneModel(model, 
+                             numEpochs, 
+                             batchSize, 
+                             trainGenerator, 
+                             valGenerator, 
+                             callbacks) {
+
+    // keep a losses object to return at the end of fine-tuning
     const losses = {
         loss: [],
         valLoss: []
     }
+    // reset the model's internal RNN states from wherever they were left
+    // during the most recent model training
     model.resetStates()
+
     let lastEpoch = 0
     if (callbacks && typeof callbacks.onEpochBegin === 'function') {
+        // if an onEpochBegin() callback was included, fire it now
         callbacks.onEpochBegin()
     }
-    // epochs
+
+    // Train epochs in an infinite loop
     while (true) {
         const [x, y, epoch] = trainGenerator.next().value
-        // console.log(tf.memory())
         const history = await model.fit(x, y, {
             batchSize: batchSize,
             epochs: 1,
             shuffle: false,
-            // stepsPerEpoch: 1,
-            // callbacks: callbacks,
             yieldEvery: 'batch'
         })
 
@@ -281,24 +289,33 @@ async function fineTuneModel(model, numEpochs, batchSize, trainGenerator, valGen
             const eval = await model.evaluate(x, y, { batchSize: batchSize })
             const valLoss = (await eval.data())[0]
             const loss = history.history.loss[0]
-            console.log(`Epoch: ${epoch}, Training loss: ${loss}, Validation loss: ${valLoss}`)
+            let msg = `Epoch ${epoch} Train loss: ${loss} Val loss: ${valLoss}`
+            console.log(msg)
             losses.loss.push(loss)
             losses.valLoss.push(valLoss)
-            // NOTE: Don't forget to reset states on each epoch! This must be done manually!
+            // Don't forget to reset states on each epoch! 
             model.resetStates()
             lastEpoch = epoch
+
+            // Free the tensor memory
             x.dispose()
             y.dispose()
+
+            // Call the onEpochEnd() and onEpochBegin() callbacks if they
+            // were included as arguments
 
             if (callbacks && typeof callbacks.onEpochEnd === 'function') {
                 callbacks.onEpochEnd(lastEpoch, loss, valLoss)
             }
 
-            if (epoch != numEpochs && callbacks && typeof callbacks.onEpochBegin === 'function') {
+            if (epoch != numEpochs && callbacks && 
+                typeof callbacks.onEpochBegin === 'function') {
                 callbacks.onEpochBegin()
             }
         }
-    
+
+        // Once we've trained for numEpochs, release the tensor memory and
+        // return the losses object
         if (epoch == numEpochs) {
             x.dispose()
             y.dispose()
