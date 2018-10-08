@@ -111,7 +111,7 @@ const app = new Vue({
                 this.model.status = 'Updating model architecture...'
                 this.model.model = utils.updateModelArchitecture(this.model.model, { batchSize: BATCH_SIZE, seqLen: SEQ_LEN, dropout: DROPOUT })
                 this.model.trainable = true
-                this.model.model.compile({ optimizer: 'rmsprop', loss: 'categoricalCrossentropy', metrics: 'categoricalAccuracy' })
+                this.model.model.compile({ optimizer: 'adam', loss: 'categoricalCrossentropy', metrics: 'categoricalAccuracy' })
                 this.model.status = 'Training model...'
 
                 const options = {
