@@ -31,6 +31,11 @@
       button[disabled] {
         text-decoration-line: line-through
       }
+
+      .black {
+        color: black;
+      }
+  
     </style>
 </head>
 <body>
@@ -54,10 +59,12 @@
         user. Populate the field with a twitter username, excluding the @ 
         symbol, then press the "Download Tweets" button.
       </p>
-      <em><p style="color: black;">{{ twitter.status }}</p></em>
+      <em><p class="black">{{ twitter.status }}</p></em>
       <input type="text" name="twitter-user" v-model="twitter.user">
       <!-- run downloadTweets() on button press -->
-      <button @click=downloadTweets()>Download Tweets</button>
+      <button @click="downloadTweets()" :disabled="model.training">
+        Download Tweets
+      </button>
     </section>
 
     <!-- Model section: Load and train models and generate text. -->
@@ -68,7 +75,19 @@
         the "base-model." You can also load models you have already trained 
         and continue to train them or use them to generate new tweets.
       </p>
-      <em><p style="color: black;" v-html="model.status"></p></em>
+      <em><p class="black" v-html="model.status"></p></em>
+      
+      <!-- A range slider to choose the number of training epochs -->
+      <div>
+        <label class="black">
+          {{ numEpochs }} Epoch{{ numEpochs > 1 ? 's' : '' }}
+        </label>
+        <input v-model="numEpochs" style="width: 100%" type="range" 
+        min="1" max="10" value="2" step="1" >
+        <span class="black">Faster</span> 
+        <span class="black" style="float: right">Better</span>
+      </div>
+
       <label>Load Model</label>
       <!-- run loadModel() on selection -->
       <select v-model="model.path" v-on:change="loadModel(model.path)" 
@@ -92,7 +111,7 @@
         Here are a few synthetic tweets generated in the style of 
         @{{ model.name }}. Generating new tweets will replace these ones.
       </p>
-      <p style="color:black;" v-for="tweet in generatedTweets">{{tweet}}</p>
+      <p class="black" v-for="tweet in generatedTweets">{{ tweet }}</p>
     </section>
   </div>
 
