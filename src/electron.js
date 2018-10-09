@@ -17,7 +17,7 @@ const TWEET_SERVER = 'http://localhost:3000'
 const BATCH_SIZE = 64 // 128
 const SEQ_LEN = 64
 const DROPOUT = 0.1
-const FINETUNE_EPOCHS = 4 // 10
+const FINETUNE_EPOCHS = 5 // 10
 const VAL_SPLIT = 0.2
 const GENERATED_TEXT_LENGTH = 2048
 const TOP_N_SAMPLING = 3
@@ -179,6 +179,7 @@ const app = new Vue({
                 }
 
                 this.generatedTweets = tweets
+                this.model.status = `Finished generating text using ${this.model.path}`
             }
         }
     }

@@ -2,9 +2,9 @@
   "name": "twitter-transfer-learning",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "npm start",
   "scripts": {
-    "start": "electron .",
+    "start": "electron index.html",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
