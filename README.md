@@ -58,3 +58,9 @@ This will launch an electron application that you can use to:
 ![Screenshot #1](.images/screenshot-1.png)
 
 ![Screenshot #2](.images/screenshot-2.png)
+
+## License
+
+Copyright (C) 2018 Branger_Briz
+
+Licensed under the [GPL v3](LICENSE) or any later version. 
