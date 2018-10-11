@@ -100,7 +100,7 @@ function* batchGenerator(sequence, options) {
             x = x.reshape([batchSize, numBatches * seqLen, VOCABSIZE])
         } else {
             x = x.reshape([batchSize, numBatches * seqLen])
-        }    
+        }
         console.info(`x shape: ${x.shape}`)
 
         let y = tf.tensor(sequence.slice(1, roundedLen + 1))
@@ -298,8 +298,8 @@ async function fineTuneModel(model,
             lastEpoch = epoch
 
             // Free the tensor memory
-            x.dispose()
-            y.dispose()
+            // x.dispose()
+            // y.dispose()
 
             // Call the onEpochEnd() and onEpochBegin() callbacks if they
             // were included as arguments
