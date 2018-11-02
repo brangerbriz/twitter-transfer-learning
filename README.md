@@ -9,14 +9,13 @@ Create twitter bots in-browser using Tensorflow.js and transfer learning with a 
 git clone --recursive https://github.com/brangerbriz/twitter-transfer-learning
 cd twitter-transfer-learning
 
+# if you have an NVIDIA graphics card and CUDA installed, replace all instances
+# of "tfjs-node" with "tfjs-node-gpu" in package.json, src/*, and bin/*
+# If you do not, or don't know what this means, skip this step...
+sed -i "s/tfjs-node/tfjs-node-gpu/g" package.json src/* bin/*
+
 # install dependencies
 npm install
-
-# if you have an NVIDIA graphics card and CUDA installed, download tfjs-node-gpu
-# If you do not, or don't know what this means, skip this step...
-npm install @tensorflow/tfjs-node-gpu
-# replace all instances of @tensorflow/tfjs-node with @tensorflow/tfjs-node-gpu in src/
-find src/ -type f | xargs sed -i "s#require(['\"\`]@tensorflow/tfjs-node['\"\`])#require('@tensorflow/tfjs-node-gpu')#g"
 ```
 
 ## Install Tweet-Server

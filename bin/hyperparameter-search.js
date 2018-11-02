@@ -8,14 +8,7 @@ const fs = require('fs')
 const Json2csvParser = require('json2csv').Parser
 const utils = require('../src/utils')
 
-// try and load tfjs-node-gpu, but fallback to tfjs-node if no CUDA
-require('@tensorflow/tfjs-node-gpu')
-if (['webgl', 'cpu'].includes(tf.getBackend())) {
-    require('@tensorflow/tfjs-node') 
-    console.log('GPU environment not found, loaded @tensorflow/tfjs-node')
-} else {
-    console.log('loaded @tensorflow/tfjs-node-gpu')
-}
+require('@tensorflow/tfjs-node')
 console.log(`using tfjs backend "${tf.getBackend()}"`)
 
 const NUM_TRIALS = 60
